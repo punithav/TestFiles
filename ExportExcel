@@ -1,0 +1,110 @@
+Protected Sub btnExport_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnExport.Click
+    
+      Dim dt As New DataTable("GridView_Data")
+      For Each cell As TableCell In ScoreGrid.HeaderRow.Cells
+        dt.Columns.Add(cell.Text)
+      Next
+      For Each row As GridViewRow In ScoreGrid.Rows
+        dt.Rows.Add()
+        For j As Integer = 0 To row.Cells.Count - 1
+          dt.Rows(dt.Rows.Count - 1)(j) = row.Cells(j).Text
+        Next
+      Next
+      'Adding Footer row of grid to datatable
+      Dim footerTextofGridArray(ScoreGrid.FooterRow.Cells.Count - 1) As String
+      For cell As Integer = 0 To ScoreGrid.FooterRow.Cells.Count - 1
+        footerTextofGridArray(cell) = ScoreGrid.FooterRow.Cells(cell).Text
+      Next
+      dt.Rows.Add(footerTextofGridArray)
+
+
+      Dim excelPackage = New OfficeOpenXml.ExcelPackage
+
+      Dim excelWorksheet = excelPackage.Workbook.Worksheets.Add("Sheet")
+      excelWorksheet.Cells("A1").LoadFromDataTable(dt, True)
+
+      If chkPerfInd.Checked Then
+        Dim i As Integer = 0
+        Do While (i <= dt.Columns.Count)
+          excelWorksheet.Column((i + 1)).AutoFit()
+          excelWorksheet.Cells(1, (i + 1)).Style.Font.Bold = True
+          excelWorksheet.Cells(1, (i + 1)).Style.Font.Size = 14
+          i = (i + 1)
+        Loop
+
+        For rowCount As Integer = 1 To dt.Rows.Count + 1
+          For colCount As Integer = 2 To dt.Columns.Count
+            If excelWorksheet.Cells(rowCount, colCount).Text.Trim() = "--" Then
+              Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+              range.Style.Fill.PatternType = ExcelFillStyle.Solid
+              range.Style.Fill.BackgroundColor.SetColor(Color.White)
+              range.Style.Font.Color.SetColor(Color.Black)
+            ElseIf IsNumeric(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) Then
+              excelWorksheet.Cells(rowCount, colCount).Value = Convert.ToDouble(excelWorksheet.Cells(rowCount, colCount).Text)
+              If CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) >= 4.8 Then
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Fill.PatternType = ExcelFillStyle.Solid
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.ColorTranslator.FromHtml("#1E762E"))
+                range.Style.Font.Color.SetColor(Color.Black)
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              ElseIf CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) >= 4.7 And CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) < 4.8 Then
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Fill.PatternType = ExcelFillStyle.Solid
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.ColorTranslator.FromHtml("#29A241"))
+                range.Style.Font.Color.SetColor(Color.Black)
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              ElseIf CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) >= 4.6 And CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) < 4.7 Then
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Fill.PatternType = ExcelFillStyle.Solid
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.ColorTranslator.FromHtml("#47E162"))
+                range.Style.Font.Color.SetColor(Color.Black)
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              ElseIf CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) >= 4.4 And CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) < 4.6 Then
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Fill.PatternType = ExcelFillStyle.Solid
+                range.Style.Fill.BackgroundColor.SetColor(Color.Yellow)
+                range.Style.Font.Color.SetColor(Color.Black)
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              ElseIf CDbl(excelWorksheet.Cells(rowCount, colCount).Text.Trim()) < 4.4 Then
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Fill.PatternType = ExcelFillStyle.Solid
+                range.Style.Fill.BackgroundColor.SetColor(System.Drawing.ColorTranslator.FromHtml("#E9341B"))
+                range.Style.Font.Color.SetColor(Color.Black)
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              End If
+            End If
+            If colCount = dt.Columns.Count Then
+              For rowCnt As Integer = 1 To dt.Rows.Count + 1
+                Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+                range.Style.Font.Bold = True
+                range.Style.Numberformat.Format = "@"
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+              Next
+            End If
+          Next
+          If rowCount = dt.Rows.Count + 1 Then
+            For colCount As Integer = 1 To dt.Columns.Count
+              Dim range As ExcelRange = excelWorksheet.Cells(rowCount, colCount)
+              range.Style.Font.Bold = True
+              range.Style.Numberformat.Format = "@"
+              If rowCount = 0 Then
+                range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right
+
+              End If
+            Next
+          End If
+        Next
+      End If
+
+
+
+      Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      Dim fname As String = "Dyna" & Session("cuid") & "_MonthlyTrendAnalysis.xls"
+      Response.AddHeader("content-disposition", "attachment;filename=" & "Dyna" & Session("cuid") & "_MonthlyTrendAnalysis" + ".xlsx")
+      Dim stream As MemoryStream = New MemoryStream(excelPackage.GetAsByteArray())
+
+      Response.OutputStream.Write(stream.ToArray(), 0, stream.ToArray().Length)
+      Response.Flush()
+      Response.Close()
+      '==3Sept2014
+    End Sub
